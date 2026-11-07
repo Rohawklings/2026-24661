@@ -80,9 +80,11 @@ public class MecanumDriveTeleOp extends LinearOpMode {
             if (gamepad1.y){
                 odo.recalibrateIMU(); //recalibrates the IMU without resetting position
             }
+
             telemetry.addData("Drive Motors", "LU: %.2f, RU: %.2f LB: %.2f RB: %.2f", luPower, ruPower,lbPower, rbPower);
             telemetry.addData("Intake Status", gamepad1.a ? "Running" : "Stopped");
             telemetry.addData("Flywheel Status", gamepad1.b ? "Running" : "Stopped");
+            telemetry.addData("Odomety","X: %.2f, Y: %.2f",odo.getPosX(),odo.getPosY());
             telemetry.update();
         }
     }
