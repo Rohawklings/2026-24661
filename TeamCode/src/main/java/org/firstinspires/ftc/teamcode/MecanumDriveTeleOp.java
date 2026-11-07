@@ -4,7 +4,10 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
 @TeleOp(name = "MecanumDriveTeleOp", group = "Linear OpMode")
 public class MecanumDriveTeleOp extends LinearOpMode {
     //Motor definitions
@@ -15,15 +18,19 @@ public class MecanumDriveTeleOp extends LinearOpMode {
     private DcMotor intake;//main i
     private DcMotor Lcornerintake;//intake motors
     private DcMotor Rcornerintake;
-
+    GoBildaPinpointDriver odo;
     @Override
     public void runOpMode() {
         LUmotor = hardwareMap.get(DcMotor.class, "LUmotor");
         LBmotor = hardwareMap.get(DcMotor.class, "LBmotor");
         RUmotor = hardwareMap.get(DcMotor.class, "RUmotor");
         RBmotor = hardwareMap.get(DcMotor.class, "RBmotor");
-
+        odo = hardwareMap.get(GoBildaPinpointDriver.class,"odo");
         intake = hardwareMap.get(DcMotor.class, "intake");
+        odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
+        odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);
+        odo.resetPosAndIMU();
+        odo.setOffsets(-84.0, -168.0, DistanceUnit.MM);
         //Lcornerintake = hardwareMap.get(DcMotor.class, "Lcornerintake");
         //Rcornerintake = hardwareMap.get(DcMotor.class, "Rcornerintake");
         intake.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -38,6 +45,7 @@ public class MecanumDriveTeleOp extends LinearOpMode {
         waitForStart();
 
         while (opModeIsActive()) {
+            odo.update();
             double y = - gamepad1.left_stick_y;
             double x = gamepad1.left_stick_x * 1.1;
             double rx = gamepad1.right_stick_x;
@@ -65,7 +73,13 @@ public class MecanumDriveTeleOp extends LinearOpMode {
                 //Lcornerintake.setPower(0.0);
                 //Rcornerintake.setPower(0.0);
             }
+            if (gamepad1.b){
+                odo.resetPosAndIMU(); //resets the position to 0 and recalibrates the IMU
+            }
 
+            if (gamepad1.y){
+                odo.recalibrateIMU(); //recalibrates the IMU without resetting position
+            }
             telemetry.addData("Drive Motors", "LU: %.2f, RU: %.2f LB: %.2f RB: %.2f", luPower, ruPower,lbPower, rbPower);
             telemetry.addData("Intake Status", gamepad1.a ? "Running" : "Stopped");
             telemetry.addData("Flywheel Status", gamepad1.b ? "Running" : "Stopped");
