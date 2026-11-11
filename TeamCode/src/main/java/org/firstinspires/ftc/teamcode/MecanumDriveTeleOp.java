@@ -16,8 +16,8 @@ public class MecanumDriveTeleOp extends LinearOpMode {
     private DcMotor RUmotor;
     private DcMotor RBmotor;
     private DcMotor intake;//main i
-    private DcMotor Lcornerintake;//intake motors
-    private DcMotor Rcornerintake;
+    private DcMotor outtake;
+
     GoBildaPinpointDriver odo;
     @Override
     public void runOpMode() {
@@ -27,6 +27,7 @@ public class MecanumDriveTeleOp extends LinearOpMode {
         RBmotor = hardwareMap.get(DcMotor.class, "RBmotor");
         odo = hardwareMap.get(GoBildaPinpointDriver.class,"odo");
         intake = hardwareMap.get(DcMotor.class, "intake");
+        outtake = hardwareMap.get(DcMotor.class, "outtake");
         odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
         odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);
         odo.resetPosAndIMU();
@@ -34,6 +35,7 @@ public class MecanumDriveTeleOp extends LinearOpMode {
         //Lcornerintake = hardwareMap.get(DcMotor.class, "Lcornerintake");
         //Rcornerintake = hardwareMap.get(DcMotor.class, "Rcornerintake");
         intake.setDirection(DcMotorSimple.Direction.REVERSE);
+        outtake.setDirection(DcMotorSimple.Direction.REVERSE);
         LUmotor.setDirection(DcMotorSimple.Direction.REVERSE);
         LBmotor.setDirection(DcMotorSimple.Direction.REVERSE);
         RUmotor.setDirection(DcMotorSimple.Direction.FORWARD);
@@ -73,17 +75,18 @@ public class MecanumDriveTeleOp extends LinearOpMode {
                 //Lcornerintake.setPower(0.0);
                 //Rcornerintake.setPower(0.0);
             }
-            if (gamepad1.b){
+            if (gamepad1.y){
                 odo.resetPosAndIMU(); //resets the position to 0 and recalibrates the IMU
             }
 
-            if (gamepad1.y){
-                odo.recalibrateIMU(); //recalibrates the IMU without resetting position
+            if (gamepad1.b){
+                 //fires outtake
+                outtake.setPower(-1.0);
             }
 
             telemetry.addData("Drive Motors", "LU: %.2f, RU: %.2f LB: %.2f RB: %.2f", luPower, ruPower,lbPower, rbPower);
             telemetry.addData("Intake Status", gamepad1.a ? "Running" : "Stopped");
-            telemetry.addData("Flywheel Status", gamepad1.b ? "Running" : "Stopped");
+            telemetry.addData("Outtake Status", gamepad1.y ? "Running" : "Stopped");
             telemetry.addData("Odomety","X: %.2f, Y: %.2f",odo.getPosX(),odo.getPosY());
             telemetry.update();
         }
