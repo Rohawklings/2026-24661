@@ -17,10 +17,13 @@ public class MecanumDriveTeleOp extends LinearOpMode {
     private DcMotor RBmotor;
     private DcMotor intake;//main i
     private DcMotor outtake;
-
+    private boolean intake_on;
+    private boolean intake_reverse;
     GoBildaPinpointDriver odo;
     @Override
     public void runOpMode() {
+        intake_on=false;
+        intake_reverse=false;
         LUmotor = hardwareMap.get(DcMotor.class, "LUmotor");
         LBmotor = hardwareMap.get(DcMotor.class, "LBmotor");
         RUmotor = hardwareMap.get(DcMotor.class, "RUmotor");
@@ -64,24 +67,27 @@ public class MecanumDriveTeleOp extends LinearOpMode {
             RUmotor.setPower(ruPower);
             RBmotor.setPower(rbPower);
 
-            if (gamepad1.a) {
-                intake.setPower(-1.0);
-                //Lcornerintake.setPower(-1.0);
-                //Rcornerintake.setPower(1.0);
-            } else if (gamepad1.x){
-                intake.setPower(2.0);
-            } else {
+            if (gamepad1.aWasReleased()) {
+                intake_on=!intake_on;
+            }
+            if (gamepad1.xWasReleased()){
+                intake_reverse=!intake_reverse;
+            }
+            if(intake_on){
+                intake.setPower(-1.0*(intake_reverse? -1: 1));
+            }else{
                 intake.setPower(0.0);
-                //Lcornerintake.setPower(0.0);
-                //Rcornerintake.setPower(0.0);
             }
             if (gamepad1.y){
                 odo.resetPosAndIMU(); //resets the position to 0 and recalibrates the IMU
             }
-
             if (gamepad1.b){
                  //fires outtake
                 outtake.setPower(-1.0);
+            }else {
+                outtake.setPower(0.0);
+                //Lcornerintake.setPower(0.0);
+                //Rcornerintake.setPower(0.0);
             }
 
             telemetry.addData("Drive Motors", "LU: %.2f, RU: %.2f LB: %.2f RB: %.2f", luPower, ruPower,lbPower, rbPower);
