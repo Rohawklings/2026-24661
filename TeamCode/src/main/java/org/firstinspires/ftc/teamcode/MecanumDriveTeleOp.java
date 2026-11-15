@@ -39,7 +39,7 @@ public class MecanumDriveTeleOp extends LinearOpMode {
         RBmotor.setDirection(DcMotorSimple.Direction.FORWARD);
         intake.setDirection(DcMotorSimple.Direction.REVERSE);
         outtake.setDirection(DcMotorSimple.Direction.REVERSE);
-        transfer.setDirection(DcMotorSimple.Direction.FORWARD);
+        transfer.setDirection(DcMotorSimple.Direction.REVERSE);
 
         // setup odometry
         odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
@@ -78,8 +78,7 @@ public class MecanumDriveTeleOp extends LinearOpMode {
             //intake
             double intakePower = 0.0;
             if (gamepad1.right_trigger > 0) {
-                // may be reversed, ftc kids plz fix as i have no access to actual robot
-                intakePower = gamepad1.a ? -1.0 : 1.0;
+                intakePower = gamepad1.a ? 1.0 : -1.0;
             }
             intake.setPower(intakePower);
 
@@ -87,11 +86,8 @@ public class MecanumDriveTeleOp extends LinearOpMode {
             if (gamepad1.y) {
                 odo.resetPosAndIMU();
             }
-
-            // temporary measure: your outtake power is scaled by the left trigger, you can toggle it if you want...
             double outtakeInput = gamepad1.left_trigger;
             outtake.setPower(-outtakeInput);
-            // TODO: right now, transfer always activates when outtake is running, but you all may want to update this later
             transfer.setPower(outtakeInput > 0 ? 1.0 : 0.0);
 
             telemetry.addData("Drive Motors", "LU: %.2f, RU: %.2f LB: %.2f RB: %.2f", luPower, ruPower, lbPower, rbPower);
@@ -103,9 +99,7 @@ public class MecanumDriveTeleOp extends LinearOpMode {
 }
 
 /*
-README 11/11:
 
-I've just updated your foundational code to be less jarbled
 
 Right Trigger - Intake (A to reverse)
 Left Trigger - Outtake (scaled by trigger value) & Transfer
@@ -124,8 +118,4 @@ FOR YGS TO DO (DO NOT DELETE THIS COMMENT):
 - Pedro Pathing setup (ASAP, ask me if you have problems, I had a TON last year)
 - If yall need help with servos (the pollen something), i can also help 
 
-COMMIT EVERY DAY YOU DO WORK - END OF DAY COMMITS ARE VERY IMPORTANT. 
-DETAILED COMMIT MESSAGES ARE ALSO VERY IMPORTANT. 
-
-basically anything youre stuck on i can help with, just shoot me a message
 */
