@@ -1,8 +1,10 @@
 package org.firstinspires.ftc.teamcode;
+
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 
@@ -17,12 +19,14 @@ public class MecanumDriveTeleOp extends LinearOpMode {
     private DcMotorEx intake;
     private DcMotorEx outtake;
     private DcMotorEx transfer;
+    private int shootRPM;
 
     private GoBildaPinpointDriver odo;
 
     @Override
     public void runOpMode() {
         // initalize motors and odo
+        shootRPM = 1000;
         LUmotor = hardwareMap.get(DcMotorEx.class, "LUmotor");
         LBmotor = hardwareMap.get(DcMotorEx.class, "LBmotor");
         RUmotor = hardwareMap.get(DcMotorEx.class, "RUmotor");
@@ -56,6 +60,9 @@ public class MecanumDriveTeleOp extends LinearOpMode {
         waitForStart();
 
         while (opModeIsActive()) {
+            double target_tps = 0;
+            //tps readigns is in increments of 10 idk why
+
             odo.update();
 
             // basic drive code
@@ -87,14 +94,45 @@ public class MecanumDriveTeleOp extends LinearOpMode {
                 odo.resetPosAndIMU();
             }
             double outtakeInput = gamepad1.left_trigger;
-            outtake.setPower(-outtakeInput);
-            transfer.setPower(outtakeInput > 0 ? 1.0 : 0.0);
+            if (outtakeInput > 0.0) {
+                target_tps = rpm_to_tps(shootRPM);
+                //tps readings is in increments of 10 idk why
+                outtake.setVelocity(target_tps);
+                double tolerence = 0.05;
+                double upper = target_tps * (1 + tolerence);
+                double lower = target_tps * (1 - tolerence);
+                while (
+                        !((outtake.getVelocity() < upper)
+                                && (outtake.getVelocity() > lower))
+                                && !(gamepad1.b)
+                ) {
 
+                    sleep(50);
+                    telemetry.addData("current outtake rpm","target: %.2f, cur: %.2f", target_tps,outtake.getVelocity());
+                    telemetry.update();
+                }
+                transfer.setPower(outtakeInput > 0 ? 1.0 : 0.0);
+
+            }
+
+            if(gamepad1.b){
+                target_tps=rpm_to_tps(shootRPM/3);
+                outtakeInput=0.0;
+                outtake.setVelocity(target_tps);
+                transfer.setPower(0.0);
+                telemetry.addData("shooting halted","");
+            }
             telemetry.addData("Drive Motors", "LU: %.2f, RU: %.2f LB: %.2f RB: %.2f", luPower, ruPower, lbPower, rbPower);
             telemetry.addData("Outtake Status", outtakeInput > 0 ? "Running" : "Stopped");
             telemetry.addData("Odometry", "X: %.2f, Y: %.2f", odo.getPosX(), odo.getPosY());
             telemetry.update();
         }
+
+    }
+
+    private double rpm_to_tps(double rpm) {
+        int ticks_per_round = 28;
+        return rpm * ticks_per_round / 60;
     }
 }
 
@@ -104,6 +142,7 @@ public class MecanumDriveTeleOp extends LinearOpMode {
 Right Trigger - Intake (A to reverse)
 Left Trigger - Outtake (scaled by trigger value) & Transfer
 Y - Reset odometry
+B - Halt shot
 
 FOR YGS TO DO (DO NOT DELETE THIS COMMENT):
 - figure out what works for ygs (the controls, whether yall want to use two drivers, etc)
