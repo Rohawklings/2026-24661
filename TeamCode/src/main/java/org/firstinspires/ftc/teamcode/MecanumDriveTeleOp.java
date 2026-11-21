@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
@@ -42,7 +43,7 @@ public class MecanumDriveTeleOp extends LinearOpMode {
         RUmotor.setDirection(DcMotorSimple.Direction.FORWARD);
         RBmotor.setDirection(DcMotorSimple.Direction.FORWARD);
         intake.setDirection(DcMotorSimple.Direction.REVERSE);
-        outtake.setDirection(DcMotorSimple.Direction.REVERSE);
+        outtake.setDirection(DcMotorSimple.Direction.FORWARD);
         transfer.setDirection(DcMotorSimple.Direction.REVERSE);
 
         // setup odometry
@@ -56,7 +57,8 @@ public class MecanumDriveTeleOp extends LinearOpMode {
         // report status
         telemetry.addData("Status", "Initialized");
         telemetry.update();
-
+        transfer.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        setMotorPosUndAttend(transfer,99);
         waitForStart();
 
         while (opModeIsActive()) {
@@ -98,7 +100,7 @@ public class MecanumDriveTeleOp extends LinearOpMode {
                 target_tps = rpm_to_tps(shootRPM);
                 //tps readings is in increments of 10 idk why
                 outtake.setVelocity(target_tps);
-                double tolerence = 0.05;
+                double tolerence = 0.1;
                 double upper = target_tps * (1 + tolerence);
                 double lower = target_tps * (1 - tolerence);
                 while (
@@ -111,8 +113,8 @@ public class MecanumDriveTeleOp extends LinearOpMode {
                     telemetry.addData("current outtake rpm","target: %.2f, cur: %.2f", target_tps,outtake.getVelocity());
                     telemetry.update();
                 }
-                transfer.setPower(outtakeInput > 0 ? 1.0 : 0.0);
-
+                setMotorPosUndAttend(transfer,-57);
+                setMotorPosUndAttend(transfer,99);
             }
 
             if(gamepad1.b){
@@ -129,7 +131,19 @@ public class MecanumDriveTeleOp extends LinearOpMode {
         }
 
     }
-
+    private void setMotorPosUndAttend(DcMotorEx motor,int pos){
+        motor.setTargetPosition(pos);
+        transfer.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        //motor.setPower(1);
+        double tar_pos_upper=transfer.getTargetPosition()*1.1;
+        double tar_pos_under=transfer.getTargetPosition()*0.9;
+        while((transfer.getCurrentPosition()< tar_pos_under) || (transfer.getCurrentPosition()>tar_pos_upper)){
+            telemetry.addData("current transfer pos","target: %d, cur: %d", transfer.getTargetPosition(),transfer.getCurrentPosition());
+            telemetry.update();
+            sleep(50);
+        }
+        motor.setPower(0);
+    }
     private double rpm_to_tps(double rpm) {
         int ticks_per_round = 28;
         return rpm * ticks_per_round / 60;
@@ -156,5 +170,7 @@ FOR YGS TO DO (DO NOT DELETE THIS COMMENT):
     - One limelight for one side is ENOUGH if calibrated correctly
 - Pedro Pathing setup (ASAP, ask me if you have problems, I had a TON last year)
 - If yall need help with servos (the pollen something), i can also help 
-
+FRANCAIS
+212 470 2128
+www.elitefrenchtutoring.com
 */
