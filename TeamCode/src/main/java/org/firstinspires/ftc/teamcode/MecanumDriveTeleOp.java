@@ -1,14 +1,20 @@
 package org.firstinspires.ftc.teamcode;
 
 
+import static java.lang.Thread.sleep;
+
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
+import com.qualcomm.hardware.limelightvision.LLStatus;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+
 
 
 @TeleOp(name = "Mecanum TeleOp", group = "TeleOp")
@@ -32,10 +38,13 @@ public class MecanumDriveTeleOp extends OpMode {
     private DcMotor intake;
     private DcMotorEx outtake;
     private DcMotor transfer;
+    Limelight3A limelight;
+    private Servo depollinator;
 
     private boolean flywheelOn = false;
     private boolean gateOpen = false;
     private boolean jogging = false;
+    private boolean depollinate = false;
     private int gateTarget = GATE_CLOSED_POS;
 
     private boolean lastA = false, lastB = false, lastLeft = false;
@@ -43,16 +52,23 @@ public class MecanumDriveTeleOp extends OpMode {
     private long flywheelStartTime = 0;
     private double peakVelocity = 0;
 
+
     @Override
     public void init() {
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+        limelight.setPollRateHz(100);
+        limelight.start();
+        limelight.pipelineSwitch(1);
         LBmotor = hardwareMap.get(DcMotor.class, "LBmotor");
         LUmotor = hardwareMap.get(DcMotor.class, "LUmotor");
         RBmotor = hardwareMap.get(DcMotor.class, "RBmotor");
         RUmotor = hardwareMap.get(DcMotor.class, "RUmotor");
+        depollinator= hardwareMap.get(Servo.class, "depop");
         intake = hardwareMap.get(DcMotor.class, "intake");
         outtake = hardwareMap.get(DcMotorEx.class, "outtake");
         transfer = hardwareMap.get(DcMotor.class, "transfer");
         odo = hardwareMap.get(GoBildaPinpointDriver.class, "odo");
+
         // setup odometry
         odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
         odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);
@@ -64,6 +80,7 @@ public class MecanumDriveTeleOp extends OpMode {
         LUmotor.setDirection(DcMotorSimple.Direction.REVERSE);
         RBmotor.setDirection(DcMotorSimple.Direction.FORWARD);
         RUmotor.setDirection(DcMotorSimple.Direction.REVERSE);
+
 
         DcMotor[] driveMotors = {LBmotor, LUmotor, RBmotor, RUmotor};
         for (DcMotor m : driveMotors) {
@@ -96,7 +113,12 @@ public class MecanumDriveTeleOp extends OpMode {
 
         double x = gamepad1.left_stick_x * 1.1;
         double rx = gamepad1.right_stick_x;
-
+        LLResult result = limelight.getLatestResult();
+        if (result != null && result.isValid()) {
+            //do smth with limelight
+        } else {
+            telemetry.addData("Limelight", "No Targets");
+        }
         double denom = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1.0);
         LUmotor.setPower((y + x + rx) / denom);
         LBmotor.setPower((y - x + rx) / denom);
@@ -122,7 +144,9 @@ public class MecanumDriveTeleOp extends OpMode {
             }
         }
         lastA = a;
-
+        if(gamepad1.xWasReleased()){
+            depollinate=!depollinate;
+        }
         outtake.setPower(flywheelOn ? FLYWHEEL_POWER : 0);
 
         double vel = Math.abs(outtake.getVelocity());
@@ -169,13 +193,22 @@ public class MecanumDriveTeleOp extends OpMode {
             transfer.setMode(DcMotor.RunMode.RUN_TO_POSITION);
             transfer.setPower(GATE_POWER);
         }
-
+        if(depollinate){
+            depollinator.setPosition(1);
+            try {
+                sleep(500);
+            } catch (InterruptedException e) {
+            }
+            depollinator.setPosition(0);
+        }
         telemetry.addData("Intake power", intakePower);
         telemetry.addData("Flywheel on / ready", "%b / %b", flywheelOn, flywheelReady);
         telemetry.addData("Flywheel vel / peak", "%.0f / %.0f", vel, peakVelocity);
         telemetry.addData("Gate open", gateOpen);
+        telemetry.addData("Depollinator", depollinate);
         telemetry.addData("Gate pos / target", "%d / %d",
                 transfer.getCurrentPosition(), gateTarget);
+        telemetry.addData("Motor power: ", "LU: %.2f LB: %.2f RU: %.2f RB: %.2f", LUmotor.getPower(), LBmotor.getPower(), RUmotor.getPower(), RBmotor.getPower());
         telemetry.update();
     }
 
@@ -196,6 +229,7 @@ public class MecanumDriveTeleOp extends OpMode {
         intake.setPower(0);
         outtake.setPower(0);
         transfer.setPower(0);
+        depollinator.setPosition(0);
     }
 
     private double rpm_to_tps(double rpm) {
