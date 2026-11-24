@@ -10,8 +10,6 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.LLResultTypes;
-import com.qualcomm.hardware.limelightvision.LLStatus;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
@@ -28,10 +26,11 @@ public class MecanumDriveTeleOp extends OpMode {
     static final double FLYWHEEL_POWER = 1.0;
     static final double FLYWHEEL_READY_VELOCITY = 0;
     static final long FLYWHEEL_MIN_SPINUP_MS = 1000;
-    static final long FLYWHEEL_MAX_SPINUP_MS = 3000;
+    static final long FLYWHEEL_MAX_SPINUP_MS = 1500;
 
     static final double INTAKE_POWER = 1.0;
     static final boolean INTAKE_REVERSED = false;
+    static final long DEPOL_SPINUP_TIME=3000;
 
     private DcMotor LBmotor, LUmotor, RBmotor, RUmotor;
     private GoBildaPinpointDriver odo;
@@ -50,15 +49,18 @@ public class MecanumDriveTeleOp extends OpMode {
     private boolean lastA = false, lastB = false, lastLeft = false;
 
     private long flywheelStartTime = 0;
-    private double peakVelocity = 0;
+    private long depolStart=0;
 
+    private double peakVelocity = 0;
+    private int intc=0;
 
     @Override
     public void init() {
+        /*
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.setPollRateHz(100);
         limelight.start();
-        limelight.pipelineSwitch(1);
+        limelight.pipelineSwitch(1);*/
         LBmotor = hardwareMap.get(DcMotor.class, "LBmotor");
         LUmotor = hardwareMap.get(DcMotor.class, "LUmotor");
         RBmotor = hardwareMap.get(DcMotor.class, "RBmotor");
@@ -113,25 +115,29 @@ public class MecanumDriveTeleOp extends OpMode {
 
         double x = gamepad1.left_stick_x * 1.1;
         double rx = gamepad1.right_stick_x;
+        /*
         LLResult result = limelight.getLatestResult();
         if (result != null && result.isValid()) {
             //do smth with limelight
         } else {
             telemetry.addData("Limelight", "No Targets");
-        }
+        }*/
         double denom = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1.0);
         LUmotor.setPower((y + x + rx) / denom);
         LBmotor.setPower((y - x + rx) / denom);
         RUmotor.setPower((y - x - rx) / denom);
         RBmotor.setPower((y + x - rx) / denom);
         odo.update();
-        boolean intakeIn = gamepad1.x;
-        boolean intakeOut = gamepad1.y;
-        double intakePower = 0;
-        if (intakeIn) {
+        if(gamepad1.xWasPressed()){
+            intc++;
+        }
+        double intakePower = 0.0;
+        if (intc%3==1) {
             intakePower = INTAKE_POWER;
-        } else if (intakeOut) {
-            intakePower = -INTAKE_POWER;
+        }else if (intc%3==0){
+            intakePower=0.0;
+        }else if(intc%3==2){
+            intakePower=-INTAKE_POWER;
         }
         intake.setPower(intakePower);
 
@@ -144,7 +150,7 @@ public class MecanumDriveTeleOp extends OpMode {
             }
         }
         lastA = a;
-        if(gamepad1.xWasReleased()){
+        if(gamepad1.yWasPressed()){
             depollinate=!depollinate;
         }
         outtake.setPower(flywheelOn ? FLYWHEEL_POWER : 0);
@@ -194,18 +200,25 @@ public class MecanumDriveTeleOp extends OpMode {
             transfer.setPower(GATE_POWER);
         }
         if(depollinate){
-            depollinator.setPosition(1);
-            try {
-                sleep(500);
-            } catch (InterruptedException e) {
-            }
-            depollinator.setPosition(0);
+            depollinator.setPosition(0.5);
+            depolStart = System.currentTimeMillis();
+            depollinate=false;
         }
+
+        if((System.currentTimeMillis()-depolStart)>DEPOL_SPINUP_TIME){
+            depollinator.setPosition(0.0);
+            depolStart=0;
+        }
+        /*
+        //range tester
+        if(gamepad1.dpadLeftWasPressed()){depollinator.setPosition(depollinator.getPosition()+0.1);}
+        if(gamepad1.dpadRightWasPressed()){depollinator.setPosition(depollinator.getPosition()-0.1);}*/
         telemetry.addData("Intake power", intakePower);
+        telemetry.addData("Intake state", intc);
         telemetry.addData("Flywheel on / ready", "%b / %b", flywheelOn, flywheelReady);
         telemetry.addData("Flywheel vel / peak", "%.0f / %.0f", vel, peakVelocity);
         telemetry.addData("Gate open", gateOpen);
-        telemetry.addData("Depollinator", depollinate);
+        telemetry.addData("Depollinator Position", depollinator.getPosition());
         telemetry.addData("Gate pos / target", "%d / %d",
                 transfer.getCurrentPosition(), gateTarget);
         telemetry.addData("Motor power: ", "LU: %.2f LB: %.2f RU: %.2f RB: %.2f", LUmotor.getPower(), LBmotor.getPower(), RUmotor.getPower(), RBmotor.getPower());
@@ -243,9 +256,10 @@ public class MecanumDriveTeleOp extends OpMode {
 
 Right Trigger - Intake (A to reverse)
 Left Trigger - Outtake (scaled by trigger value) & Transfer
-Y - Reset odometry
-B - Halt shot
-
+X - Intake (1 press forward, next is back, next is stop)
+Y - Depolinatte
+B - Gate
+A- Fire, press again to cancel/stop
 FOR YGS TO DO (DO NOT DELETE THIS COMMENT):
 - figure out what works for ygs (the controls, whether yall want to use two drivers, etc)
 - states for storing the balls in transfer without shooting
